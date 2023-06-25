@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -49,8 +53,32 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  static final String _assetsPath = Platform.isWindows
+      ? '../data/flutter_assets/bin'
+      : '../../Frameworks/App.framework/Resources/flutter_assets/bin';
+  static File mainFile = File(Platform.resolvedExecutable);
+  static final Directory _assetsDir =
+      Directory(path.normalize(path.join(mainFile.path, _assetsPath)));
 
-  void _incrementCounter() {
+  Future<Directory> getAppDataDirectory() async {
+    final directory = await getApplicationDocumentsDirectory();
+    print(directory.path);
+    return directory;
+  }
+
+  Future<void> _incrementCounter() async {
+    var pypth = path.joinAll([_assetsDir.path, "afptool-rs"]);
+    print(pypth);
+    var appDataDir = await getAppDataDirectory();
+    print(appDataDir.path);
+    var out = await Process.run(pypth, [
+      "/Users/suyulin/work/github/test/afptool-rs/update.img",
+      appDataDir.path
+    ]);
+
+    print("result:\n ${out.stdout}");
+    print("result:\n ${out.stderr}");
+    print(out.stdout);
     setState(() {
       // This call to setState tells the Flutter framework that something has
       // changed in this State, which causes it to rerun the build method below
