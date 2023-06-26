@@ -39,21 +39,20 @@ class _ButtonsPageState extends State<ButtonsPage> {
 
   @override
   void initState() {
-    // Timer.periodic(const Duration(seconds: 1), (Timer timer) async {
-    //   // 在定时器触发时执行的操作
-    //   var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-    //   var result = await Process.run(pypth, ["ld"]);
-    //   logger.i("result:\n ${result.stdout}");
-    //   if (result.stdout.toString().contains("Loader")) {
-    //     setState(() {
-    //       deviceStatus = DeviceStatus.ready;
-    //     });
-    //   } else {
-    //     setState(() {
-    //       deviceStatus = DeviceStatus.notReady;
-    //     });
-    //   }
-    // });
+    Timer.periodic(const Duration(seconds: 1), (Timer timer) async {
+      // 在定时器触发时执行的操作
+      var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
+      var result = await Process.run(pypth, ["ld"]);
+      if (result.stdout.toString().contains("Loader")) {
+        setState(() {
+          deviceStatus = DeviceStatus.ready;
+        });
+      } else {
+        setState(() {
+          deviceStatus = DeviceStatus.notReady;
+        });
+      }
+    });
     super.initState();
   }
 
