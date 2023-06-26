@@ -4,9 +4,10 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 
 import 'logger.dart';
 
@@ -95,10 +96,19 @@ class _ButtonsPageState extends State<ButtonsPage> {
                           ),
                           PushButton(
                             buttonSize: ButtonSize.large,
-                            child: Text('升级'),
+                            child: const Text('升级'),
                             onPressed: () async {
-                               await updateFirmware();
+                              EasyLoading.show(
+                                  maskType: EasyLoadingMaskType.clear,
+                                  indicator:
+                                      LoadingAnimationWidget.waveDots(
+                                    color: Colors.white,
+                                    size: 100,
+                                  ));
+                              await updateFirmware();
+                              await updateData();
                               rebootDevice();
+                              EasyLoading.dismiss();
                             },
                           ),
                           PushButton(
@@ -171,7 +181,18 @@ updateFirmware() async {
   var appDataDir = await getAppDataDirectory();
   var oemPath = path.joinAll([appDataDir.path, "Image", "oem.img"]);
   var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-  var result = Process.runSync(pypth, ["wlx", "oem", oemPath]);
+  var result = await Process.run(pypth, ["wlx", "oem", oemPath]);
+  logger.i(result.stdout);
+  logger.i(result.stderr);
+  logger.w("updateFirmware done");
+}
+
+updateData() async {
+  logger.i("updateFirmware");
+  var appDataDir = await getAppDataDirectory();
+  var oemPath = path.joinAll([appDataDir.path, "Image", "userdata.img"]);
+  var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
+  var result = await Process.run(pypth, ["wlx", "userdata", oemPath]);
   logger.i(result.stdout);
   logger.i(result.stderr);
   logger.w("updateFirmware done");
@@ -196,8 +217,7 @@ unPackAFFirmware() async {
   var pypth = path.joinAll([_assetsDir.path, "afptool-rs"]);
   var appDataDir = await getAppDataDirectory();
   logger.i(appDataDir.path);
-  var filePath =
-      path.joinAll([appDataDir.path,"embedded-update.img"]);
+  var filePath = path.joinAll([appDataDir.path, "embedded-update.img"]);
   var out = await Process.run(pypth, [filePath, appDataDir.path]);
   logger.i("result:\n ${out.stdout}");
   logger.i("result:\n ${out.stderr}");

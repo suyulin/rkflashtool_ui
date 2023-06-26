@@ -40,6 +40,8 @@ dependencies:
   file_picker: ^5.3.1
   path: ^1.8.2
   logger: ^1.4.0
+  flutter_easyloading: ^3.0.5
+  loading_animation_widget: ^1.2.0+4
 dev_dependencies:
   flutter_test:
     sdk: flutter

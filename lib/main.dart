@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:rkflashtool_ui/pages/buttons_page.dart';
@@ -25,6 +26,7 @@ class MacosUIGalleryApp extends StatelessWidget {
           themeMode: appTheme.mode,
           debugShowCheckedModeBanner: false,
           home: const WidgetGallery(),
+          builder: EasyLoading.init(),
         );
       },
     );
