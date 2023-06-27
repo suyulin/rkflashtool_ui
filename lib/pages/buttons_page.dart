@@ -13,6 +13,8 @@ import 'package:path/path.dart' as path;
 
 import 'logger.dart';
 
+Map chipInfoMap = {0x30: "PX30", 0x38: "RK3566", 0x36: "RK3326"};
+
 class ButtonsPage extends StatefulWidget {
   const ButtonsPage({super.key});
 
@@ -38,6 +40,7 @@ final Directory _assetsDir =
 class _ButtonsPageState extends State<ButtonsPage> {
   String firmwarePath = "";
   DeviceStatus deviceStatus = DeviceStatus.unknown;
+  String chipInfo = "";
 
   @override
   void initState() {
@@ -87,7 +90,11 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showError("请先选择固件");
       return;
     }
-    EasyLoading.showProgress(0.1, status: '升级中 10%');
+    if (queryChipInfo() != chipInfo) {
+      EasyLoading.showError("芯片不匹配");
+      return;
+    }
+    EasyLoading.showProgress(0, status: '升级中 0%');
     await updateOemFirmware();
     await updateData();
     rebootDevice();
@@ -151,6 +158,35 @@ class _ButtonsPageState extends State<ButtonsPage> {
     logger.w("updateFirmware data done");
   }
 
+  unPackFWFirmware(filePath) async {
+    var pypth = path.joinAll([_assetsDir.path, "afptool-rs"]);
+    var appDataDir = await getAppDataDirectory();
+    logger.i(appDataDir.path);
+    var out = await Process.run(pypth, [filePath, appDataDir.path]);
+    out.stdout.toString().split("\n").forEach((element) {
+      if (element.contains("family")) {
+        chipInfo = element.split(":")[1].trim();
+      }
+      logger.i(element);
+    });
+    logger.i("unPackFWFirmware:\n ${out.stdout}");
+  }
+
+  String queryChipInfo() {
+    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
+    var out = Process.runSync(pypth, ["rci"]);
+    RegExp regex = RegExp(r'(\d+)');
+    Match? match = regex.firstMatch(out.stdout);
+    logger.i(out.stdout);
+    if (match != null) {
+      String number = match.group(1)!;
+      var chip = int.parse("0x$number");
+      logger.i('Extracted Number: 0x$number');
+      return chipInfoMap[chip];
+    }
+    return "未知芯片";
+  }
+
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
@@ -163,35 +199,62 @@ class _ButtonsPageState extends State<ButtonsPage> {
                   fit: FlexFit.tight,
                   child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PushButton(
-                            buttonSize: ButtonSize.large,
-                            onPressed: unPackFirmwareHandle,
-                            child: const Text('固件'),
-                          ),
-                          PushButton(
-                            buttonSize: ButtonSize.large,
-                            onPressed: updateFirmwareHandle,
-                            child: const Text('升级'),
-                          ),
-                          PushButton(
-                            buttonSize: ButtonSize.large,
-                            onPressed: changeDeviceStatusHandle,
-                            child: const Text('切换'),
-                          )
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              "固件路径: $firmwarePath",
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: PushButton(
+                                buttonSize: ButtonSize.large,
+                                onPressed: unPackFirmwareHandle,
+                                child: const Text('固件'),
+                              ),
                             ),
-                          )
-                        ],
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: PushButton(
+                                buttonSize: ButtonSize.large,
+                                onPressed: updateFirmwareHandle,
+                                child: const Text('升级'),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: PushButton(
+                                buttonSize: ButtonSize.large,
+                                onPressed: changeDeviceStatusHandle,
+                                child: const Text('切换'),
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 8.0, top: 8.0),
+                              child: SelectableText(
+                                "固件路径 : $firmwarePath",
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 8.0, top: 8.0),
+                              child: SelectableText(
+                                  "固件版本：${getVersion(firmwarePath)}"),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 8.0, top: 8.0),
+                              child: SelectableText("芯片信息：$chipInfo"),
+                            ),
+                          ],
+                        ),
                       )
                     ],
                   ),
@@ -262,12 +325,12 @@ unPackAFFirmware() async {
   logger.i(out.stdout);
 }
 
-unPackFWFirmware(filePath) async {
-  var pypth = path.joinAll([_assetsDir.path, "afptool-rs"]);
-  var appDataDir = await getAppDataDirectory();
-  logger.i(appDataDir.path);
-  var out = await Process.run(pypth, [filePath, appDataDir.path]);
-  logger.i("result:\n ${out.stdout}");
-  logger.i("result:\n ${out.stderr}");
-  logger.i(out.stdout);
+String getVersion(path) {
+  RegExp regex = RegExp(r'(\d+\.\d+\.\d+\.\d+)');
+  Match? match = regex.firstMatch(path);
+  if (match != null) {
+    String version = match.group(1)!;
+    return version;
+  }
+  return "";
 }
