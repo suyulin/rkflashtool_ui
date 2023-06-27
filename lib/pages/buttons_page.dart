@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -56,6 +58,99 @@ class _ButtonsPageState extends State<ButtonsPage> {
     super.initState();
   }
 
+  unPackFirmwareHandle() async {
+    FilePickerResult? result = await FilePicker.platform
+        .pickFiles(type: FileType.custom, allowedExtensions: ['img']);
+    if (result != null) {
+      logger.i(result.files.single.path);
+      setState(() {
+        firmwarePath = "";
+      });
+      EasyLoading.show(
+          status: '解压中',
+          indicator: LoadingAnimationWidget.waveDots(
+            color: Colors.white,
+            size: 100,
+          ));
+      String filePath = result.files.single.path as String;
+      await unPackFWFirmware(filePath);
+      await unPackAFFirmware();
+      EasyLoading.dismiss();
+      setState(() {
+        firmwarePath = filePath;
+      });
+    }
+  }
+
+  updateFirmwareHandle() async {
+    if (firmwarePath == "") {
+      EasyLoading.showError("请先选择固件");
+      return;
+    }
+    EasyLoading.showProgress(0.1, status: '升级中 10%');
+    await updateOemFirmware();
+    await updateData();
+    rebootDevice();
+    EasyLoading.showSuccess("固件更新成功");
+    EasyLoading.dismiss();
+  }
+
+  changeDeviceStatusHandle() async {
+    if (deviceStatus == DeviceStatus.ready) {
+      EasyLoading.showInfo("设备已连接");
+      return;
+    }
+    var out = await Process.run("adb", ["reboot", "bootloader"]);
+    if (out.exitCode != 0) {
+      EasyLoading.showError("设备切换失败");
+      logger.e("adb reboot bootloader failed");
+    } else {
+      EasyLoading.showSuccess("设备切换成功");
+      logger.i("adb reboot bootloader success");
+    }
+  }
+
+  Future<void> updateOemFirmware() async {
+    Completer<void> completer = Completer<void>();
+    Future<void> future = completer.future;
+    logger.i("updateFirmware oem");
+    var appDataDir = await getAppDataDirectory();
+    var oemPath = path.joinAll([appDataDir.path, "Image", "oem.img"]);
+    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
+    var result = await Process.start(pypth, ["wlx", "oem", oemPath]);
+    var s = result.stdout.transform(utf8.decoder);
+    s.listen((event) {
+      RegExp regex = RegExp(r'\b(\d+)%');
+      Match? match = regex.firstMatch(event);
+      if (match != null) {
+        String percentage = match.group(1)!;
+        EasyLoading.showProgress(
+          double.parse(percentage) / 100,
+          status: '升级中 $percentage%',
+        );
+      }
+    }, onDone: () {
+      completer.complete();
+      logger.i("oem updateFirmware done");
+    }, onError: (e) {
+      logger.e("oem updateFirmware error");
+      completer.completeError(e);
+      logger.e(e);
+    });
+    return future;
+  }
+
+  updateData() async {
+    logger.i("updateFirmware");
+    var appDataDir = await getAppDataDirectory();
+    var oemPath = path.joinAll([appDataDir.path, "Image", "userdata.img"]);
+    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
+    var result = await Process.run(pypth, ["wlx", "userdata", oemPath]);
+    logger.i(result.stdout);
+    logger.i(result.stderr);
+    logger.w("updateFirmware data done");
+  }
+
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
@@ -74,52 +169,18 @@ class _ButtonsPageState extends State<ButtonsPage> {
                         children: [
                           PushButton(
                             buttonSize: ButtonSize.large,
+                            onPressed: unPackFirmwareHandle,
                             child: const Text('固件'),
-                            onPressed: () async {
-                              FilePickerResult? result =
-                                  await FilePicker.platform.pickFiles(
-                                      type: FileType.custom,
-                                      allowedExtensions: ['img']);
-                              if (result != null) {
-                                logger.i(result.files.single.path);
-                                String filePath =
-                                    result.files.single.path as String;
-                                await unPackFWFirmware(filePath);
-                                await unPackAFFirmware();
-                                setState(() {
-                                  firmwarePath = filePath;
-                                });
-                                // File file = File(result!.files.single.path);
-                              }
-                            },
                           ),
                           PushButton(
                             buttonSize: ButtonSize.large,
+                            onPressed: updateFirmwareHandle,
                             child: const Text('升级'),
-                            onPressed: () async {
-                              EasyLoading.show(
-                                  maskType: EasyLoadingMaskType.clear,
-                                  indicator:
-                                      LoadingAnimationWidget.waveDots(
-                                    color: Colors.white,
-                                    size: 100,
-                                  ));
-                              await updateFirmware();
-                              await updateData();
-                              rebootDevice();
-                              EasyLoading.dismiss();
-                            },
                           ),
                           PushButton(
                             buttonSize: ButtonSize.large,
+                            onPressed: changeDeviceStatusHandle,
                             child: const Text('切换'),
-                            onPressed: () async {
-                              var out = await Process.run(
-                                  "adb", ["reboot", "bootloader"]);
-                              logger.i("result:\n ${out.stdout}");
-                              logger.i("result:\n ${out.stderr}");
-                              logger.i(out.stdout);
-                            },
                           )
                         ],
                       ),
@@ -173,28 +234,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
 Future<Directory> getAppDataDirectory() async {
   Directory p = Directory("/tmp");
   return p;
-}
-
-updateFirmware() async {
-  logger.i("updateFirmware");
-  var appDataDir = await getAppDataDirectory();
-  var oemPath = path.joinAll([appDataDir.path, "Image", "oem.img"]);
-  var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-  var result = await Process.run(pypth, ["wlx", "oem", oemPath]);
-  logger.i(result.stdout);
-  logger.i(result.stderr);
-  logger.w("updateFirmware done");
-}
-
-updateData() async {
-  logger.i("updateFirmware");
-  var appDataDir = await getAppDataDirectory();
-  var oemPath = path.joinAll([appDataDir.path, "Image", "userdata.img"]);
-  var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-  var result = await Process.run(pypth, ["wlx", "userdata", oemPath]);
-  logger.i(result.stdout);
-  logger.i(result.stderr);
-  logger.w("updateFirmware done");
 }
 
 changeDeviceStatus() {
