@@ -20,7 +20,7 @@ class MacosUIGalleryApp extends StatelessWidget {
       builder: (context, _) {
         final appTheme = context.watch<AppTheme>();
         return MacosApp(
-          title: 'macos_ui Widget Gallery',
+          title: 'RK Flash Tool ',
           theme: MacosThemeData.light(),
           darkTheme: MacosThemeData.dark(),
           themeMode: appTheme.mode,

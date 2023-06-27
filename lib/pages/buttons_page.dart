@@ -90,6 +90,10 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showError("请先选择固件");
       return;
     }
+    if (deviceStatus != DeviceStatus.ready) {
+      EasyLoading.showError("设备未连接");
+      return;
+    }
     if (queryChipInfo() != chipInfo) {
       EasyLoading.showError("芯片不匹配");
       return;
@@ -234,6 +238,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
                         padding: const EdgeInsets.all(8.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             Padding(
                               padding:
