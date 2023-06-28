@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
@@ -62,6 +63,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
   }
 
   unPackFirmwareHandle() async {
+    clearData();
     FilePickerResult? result = await FilePicker.platform
         .pickFiles(type: FileType.custom, allowedExtensions: ['img']);
     if (result != null) {
@@ -77,7 +79,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
           ));
       String filePath = result.files.single.path as String;
       await unPackFWFirmware(filePath);
-      await unPackAFFirmware();
       EasyLoading.dismiss();
       setState(() {
         firmwarePath = filePath;
@@ -98,9 +99,13 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showError("芯片不匹配");
       return;
     }
-    EasyLoading.showProgress(0, status: '升级中 0%');
-    await updateOemFirmware();
-    await updateData();
+    EasyLoading.show(
+        status: '更新中',
+        indicator: LoadingAnimationWidget.waveDots(
+          color: Colors.white,
+          size: 100,
+        ));
+    await updateFirmware();
     rebootDevice();
     EasyLoading.showSuccess("固件更新成功");
     EasyLoading.dismiss();
@@ -121,45 +126,10 @@ class _ButtonsPageState extends State<ButtonsPage> {
     }
   }
 
-  Future<void> updateOemFirmware() async {
-    Completer<void> completer = Completer<void>();
-    Future<void> future = completer.future;
-    logger.i("updateFirmware oem");
-    var appDataDir = await getAppDataDirectory();
-    var oemPath = path.joinAll([appDataDir.path, "Image", "oem.img"]);
-    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-    var result = await Process.start(pypth, ["wlx", "oem", oemPath]);
-    var s = result.stdout.transform(utf8.decoder);
-    s.listen((event) {
-      RegExp regex = RegExp(r'\b(\d+)%');
-      Match? match = regex.firstMatch(event);
-      if (match != null) {
-        String percentage = match.group(1)!;
-        EasyLoading.showProgress(
-          double.parse(percentage) / 100,
-          status: '升级中 $percentage%',
-        );
-      }
-    }, onDone: () {
-      completer.complete();
-      logger.i("oem updateFirmware done");
-    }, onError: (e) {
-      logger.e("oem updateFirmware error");
-      completer.completeError(e);
-      logger.e(e);
-    });
-    return future;
-  }
-
-  updateData() async {
-    logger.i("updateFirmware");
-    var appDataDir = await getAppDataDirectory();
-    var oemPath = path.joinAll([appDataDir.path, "Image", "userdata.img"]);
-    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-    var result = await Process.run(pypth, ["wlx", "userdata", oemPath]);
+  Future<void> updateFirmware() async {
+    var pypth = path.joinAll([_assetsDir.path, "flash.mac"]);
+    var result = await Process.run(pypth, ["uf", firmwarePath]);
     logger.i(result.stdout);
-    logger.i(result.stderr);
-    logger.w("updateFirmware data done");
   }
 
   unPackFWFirmware(filePath) async {
@@ -171,7 +141,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
       if (element.contains("family")) {
         chipInfo = element.split(":")[1].trim();
       }
-      logger.i(element);
     });
     logger.i("unPackFWFirmware:\n ${out.stdout}");
   }
@@ -181,7 +150,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
     var out = Process.runSync(pypth, ["rci"]);
     RegExp regex = RegExp(r'(\d+)');
     Match? match = regex.firstMatch(out.stdout);
-    logger.i(out.stdout);
     if (match != null) {
       String number = match.group(1)!;
       var chip = int.parse("0x$number");
@@ -338,4 +306,8 @@ String getVersion(path) {
     return version;
   }
   return "";
+}
+
+clearData() {
+  Process.runSync("rm", ["-rf", "/tmp/Image"]);
 }
