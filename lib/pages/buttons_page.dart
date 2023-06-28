@@ -37,7 +37,7 @@ final String _assetsPath = Platform.isWindows
 File mainFile = File(Platform.resolvedExecutable);
 final Directory _assetsDir =
     Directory(path.normalize(path.join(mainFile.path, _assetsPath)));
-
+final upgradeTool = path.joinAll([_assetsDir.path, "upgrade_tool"]);
 class _ButtonsPageState extends State<ButtonsPage> {
   String firmwarePath = "";
   DeviceStatus deviceStatus = DeviceStatus.unknown;
@@ -47,8 +47,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
   void initState() {
     Timer.periodic(const Duration(seconds: 1), (Timer timer) async {
       // 在定时器触发时执行的操作
-      var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-      var result = await Process.run(pypth, ["ld"]);
+      var result = await Process.run(upgradeTool, ["ld"]);
       if (result.stdout.toString().contains("Loader")) {
         setState(() {
           deviceStatus = DeviceStatus.ready;
@@ -127,8 +126,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
   }
 
   Future<void> updateFirmware() async {
-    var pypth = path.joinAll([_assetsDir.path, "flash.mac"]);
-    var result = await Process.run(pypth, ["uf", firmwarePath]);
+    var result = await Process.run(upgradeTool, ["uf", firmwarePath]);
     logger.i(result.stdout);
   }
 
@@ -146,8 +144,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
   }
 
   String queryChipInfo() {
-    var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-    var out = Process.runSync(pypth, ["rci"]);
+    var out = Process.runSync(upgradeTool, ["rci"]);
     RegExp regex = RegExp(r'(\d+)');
     Match? match = regex.firstMatch(out.stdout);
     if (match != null) {
@@ -272,27 +269,8 @@ Future<Directory> getAppDataDirectory() async {
   return p;
 }
 
-changeDeviceStatus() {
-  var out = Process.runSync("adb", ["reboot", "bootloader"]);
-  logger.i("result:\n ${out.stdout}");
-  logger.i("result:\n ${out.stderr}");
-  logger.i(out.stdout);
-}
-
 rebootDevice() {
-  var pypth = path.joinAll([_assetsDir.path, "rkdeveloptool"]);
-  var out = Process.runSync(pypth, ["rd"]);
-  logger.i("result:\n ${out.stdout}");
-  logger.i("result:\n ${out.stderr}");
-  logger.i(out.stdout);
-}
-
-unPackAFFirmware() async {
-  var pypth = path.joinAll([_assetsDir.path, "afptool-rs"]);
-  var appDataDir = await getAppDataDirectory();
-  logger.i(appDataDir.path);
-  var filePath = path.joinAll([appDataDir.path, "embedded-update.img"]);
-  var out = await Process.run(pypth, [filePath, appDataDir.path]);
+  var out = Process.runSync(upgradeTool, ["rd"]);
   logger.i("result:\n ${out.stdout}");
   logger.i("result:\n ${out.stderr}");
   logger.i(out.stdout);
