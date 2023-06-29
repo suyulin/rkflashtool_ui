@@ -38,6 +38,8 @@ File mainFile = File(Platform.resolvedExecutable);
 final Directory _assetsDir =
     Directory(path.normalize(path.join(mainFile.path, _assetsPath)));
 final upgradeTool = path.joinAll([_assetsDir.path, "upgrade_tool"]);
+final adb = path.joinAll([_assetsDir.path, "adb"]);
+
 class _ButtonsPageState extends State<ButtonsPage> {
   String firmwarePath = "";
   DeviceStatus deviceStatus = DeviceStatus.unknown;
@@ -102,7 +104,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
         status: '更新中',
         indicator: LoadingAnimationWidget.waveDots(
           color: Colors.white,
-          size: 100,
+          size: 50,
         ));
     await updateFirmware();
     rebootDevice();
@@ -115,7 +117,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showInfo("设备已连接");
       return;
     }
-    var out = await Process.run("adb", ["reboot", "bootloader"]);
+    var out = await Process.run(adb, ["reboot", "bootloader"]);
     if (out.exitCode != 0) {
       EasyLoading.showError("设备切换失败");
       logger.e("adb reboot bootloader failed");
