@@ -50,8 +50,6 @@
 
 /* Begin PBXFileReference section */
 		19220F432A4978DD00D648CD /* RunnerDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunnerDebug.entitlements; sourceTree = "<group>"; };
-		19DA02792A4D0F4E005A11BF /* adb */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = adb; path = ../bin/adb; sourceTree = "<group>"; };
-		19DA027A2A4D0F5C005A11BF /* bin */ = {isa = PBXFileReference; lastKnownFileType = folder; name = bin; path = ../bin; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D7294CF71000263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		333000ED22D3DE5D00554162 /* Warnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Warnings.xcconfig; sourceTree = "<group>"; };
@@ -192,8 +190,6 @@
 		D73912EC22F37F3D000D13A0 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				19DA027A2A4D0F5C005A11BF /* bin */,
-				19DA02792A4D0F4E005A11BF /* adb */,
 				C8DAB47840140A58B538119E /* Pods_Runner.framework */,
 				F6AB5C988926A46164016882 /* Pods_RunnerTests.framework */,
 			);
