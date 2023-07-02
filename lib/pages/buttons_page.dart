@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ffi';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
@@ -25,6 +23,7 @@ class ButtonsPage extends StatefulWidget {
 
 enum DeviceStatus {
   ready,
+  adb,
   notReady,
   notConnected,
   notFound,
@@ -39,25 +38,48 @@ final Directory _assetsDir =
     Directory(path.normalize(path.join(mainFile.path, _assetsPath)));
 final upgradeTool = path.joinAll([_assetsDir.path, "upgrade_tool"]);
 final adb = path.joinAll([_assetsDir.path, "adb"]);
+final xfel = path.joinAll([_assetsDir.path, "xfel"]);
+final phoenixsuit =
+    path.joinAll([_assetsDir.path, "phoenixsuit", "phoenixsuit"]);
+final phoenixsuitWorkDir = path.joinAll([_assetsDir.path, "phoenixsuit"]);
 
 class _ButtonsPageState extends State<ButtonsPage> {
   String firmwarePath = "";
   DeviceStatus deviceStatus = DeviceStatus.unknown;
   String chipInfo = "";
+  bool isR818 = false;
 
   @override
   void initState() {
     Timer.periodic(const Duration(seconds: 1), (Timer timer) async {
       // 在定时器触发时执行的操作
-      var result = await Process.run(upgradeTool, ["ld"]);
-      if (result.stdout.toString().contains("Loader")) {
+      var adbResult = await Process.run(adb, ["devices"]);
+      if (adbResult.stdout.toString().split("\n").length == 4) {
         setState(() {
-          deviceStatus = DeviceStatus.ready;
+          deviceStatus = DeviceStatus.adb;
         });
       } else {
-        setState(() {
-          deviceStatus = DeviceStatus.notReady;
-        });
+        var result = await Process.run(upgradeTool, ["ld"]);
+        if (result.stdout.toString().contains("Loader")) {
+          setState(() {
+            deviceStatus = DeviceStatus.ready;
+          });
+        } else {
+          setState(() {
+            deviceStatus = DeviceStatus.notReady;
+          });
+          var result = await Process.run(xfel, ["version"]);
+          if (result.stdout.toString().contains("WARNING")) {
+            setState(() {
+              deviceStatus = DeviceStatus.ready;
+              isR818 = true;
+            });
+          } else {
+            setState(() {
+              deviceStatus = DeviceStatus.notReady;
+            });
+          }
+        }
       }
     });
     super.initState();
@@ -96,20 +118,32 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showError("设备未连接");
       return;
     }
-    if (queryChipInfo() != chipInfo) {
-      EasyLoading.showError("芯片不匹配");
-      return;
+    if (!isR818) {
+      if (queryChipInfo() != chipInfo) {
+        EasyLoading.showError("芯片不匹配");
+        return;
+      }
     }
+
     EasyLoading.show(
-        status: '更新中',
-        indicator: LoadingAnimationWidget.waveDots(
-          color: Colors.white,
-          size: 50,
-        ));
-    await updateFirmware();
-    rebootDevice();
-    EasyLoading.showSuccess("固件更新成功");
-    EasyLoading.dismiss();
+      status: '请拔插设备',
+    );
+    if (isR818) {
+      await updateR818Firmware();
+    } else {
+      await updateFirmware();
+      rebootDevice();
+      EasyLoading.showSuccess("固件更新成功");
+      EasyLoading.dismiss();
+    }
+  }
+
+  isR818Handle() {
+    var out = Process.runSync(adb, ["shell", "hostname"]);
+    if (out.stdout.toString().contains("TinaLinux")) {
+      return true;
+    }
+    return false;
   }
 
   changeDeviceStatusHandle() async {
@@ -117,7 +151,9 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showInfo("设备已连接");
       return;
     }
-    var out = await Process.run(adb, ["reboot", "bootloader"]);
+    isR818 = await isR818Handle();
+    var cmd = isR818 ? "efex" : "bootloader";
+    var out = await Process.run(adb, ["reboot", cmd]);
     if (out.exitCode != 0) {
       EasyLoading.showError("设备切换失败");
       logger.e("adb reboot bootloader failed");
@@ -125,6 +161,21 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showSuccess("设备切换成功");
       logger.i("adb reboot bootloader success");
     }
+  }
+
+  updateR818Firmware() async {
+    var result = await Process.start(phoenixsuit, [firmwarePath],
+        workingDirectory: phoenixsuitWorkDir);
+    result.stdout.listen((event) {
+      EasyLoading.show(status: "固件更新中");
+      logger.i(utf8.decode(event));
+    }, onDone: () {
+      EasyLoading.showSuccess("固件更新成功");
+      EasyLoading.dismiss();
+    });
+    // logger.e(result.exitCode);
+    // logger.e(result.stderr);
+    // logger.i(result.stdout);
   }
 
   Future<void> updateFirmware() async {
@@ -157,7 +208,18 @@ class _ButtonsPageState extends State<ButtonsPage> {
     }
     return "未知芯片";
   }
-
+  deviceStatusDesc(){
+    switch (deviceStatus) {
+      case DeviceStatus.adb:
+        return "✅ 发现一个ADB设备";
+      case DeviceStatus.notReady:
+        return "❌ 设备未连接";
+      case DeviceStatus.ready:
+        return "✅ 设备已连接";
+      default:
+        return "❌ 设备未连接";
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
@@ -238,9 +300,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
                   //windowBreakpoint: 600,
                   builder: (_, __) {
                     return Center(
-                      child: Text(deviceStatus == DeviceStatus.ready
-                          ? "✅ 设备已连接"
-                          : "❌ 设备未连接"),
+                      child: Text(deviceStatusDesc()),
                     );
                   },
                   resizableSide: ResizableSide.top,
