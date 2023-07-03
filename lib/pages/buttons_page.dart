@@ -110,6 +110,9 @@ class _ButtonsPageState extends State<ButtonsPage> {
             size: 100,
           ));
       String filePath = result.files.single.path as String;
+      setState(() {
+        chipInfo ="";
+      });
       await unPackFWFirmware(filePath);
       EasyLoading.dismiss();
       setState(() {
@@ -123,10 +126,16 @@ class _ButtonsPageState extends State<ButtonsPage> {
       EasyLoading.showError("请先选择固件");
       return;
     }
-    if (deviceStatus != DeviceStatus.ready) {
+
+  if (deviceStatus == DeviceStatus.notReady) {
       EasyLoading.showError("设备未连接");
       return;
     }
+    if (deviceStatus == DeviceStatus.adb) {
+      EasyLoading.showError("设备未处于升级状态，请先切换");
+      return;
+    }
+
     if (!isR818) {
       if (queryChipInfo() != chipInfo) {
         EasyLoading.showError("芯片不匹配");
@@ -137,9 +146,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
       await updateR818Firmware();
     } else {
       await updateFirmware();
-      rebootDevice();
-      EasyLoading.showSuccess("固件更新成功");
-      EasyLoading.dismiss();
     }
   }
 
@@ -197,12 +203,14 @@ class _ButtonsPageState extends State<ButtonsPage> {
     }, onDone: () {
       setState(() {
         isLoading = false;
+        _progress = 0.0;
       });
       EasyLoading.showSuccess("固件更新成功");
       EasyLoading.dismiss();
     }, onError: (e) {
       setState(() {
         isLoading = false;
+        _progress = 0.0;
       });
       EasyLoading.showError("固件更新失败");
       EasyLoading.dismiss();
@@ -214,12 +222,30 @@ class _ButtonsPageState extends State<ButtonsPage> {
     setState(() {
       isLoading = true;
     });
-    EasyLoading.show(status: "固件更新中");
+    _progress = 0;
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (Timer timer) {
+      EasyLoading.showProgress(_progress,
+          status: '${(_progress * 100).toStringAsFixed(0)}%');
+      _progress += 0.02;
+
+      if (_progress >= 1) {
+        _timer?.cancel();
+      }
+    });
     var result = await Process.run(upgradeTool, ["uf", firmwarePath]);
+    if (result.exitCode != 0) {
+      EasyLoading.showError("固件更新失败");
+      logger.e(result.stderr);
+    } else {
+      EasyLoading.showSuccess("固件更新成功");
+      logger.i(result.stdout);
+    }
+    _timer?.cancel();
     setState(() {
       isLoading = false;
+      _progress = 0.0;
     });
-    logger.i(result.stdout);
   }
 
   unPackFWFirmware(filePath) async {
