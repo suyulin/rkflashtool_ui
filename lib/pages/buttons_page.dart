@@ -48,10 +48,19 @@ class _ButtonsPageState extends State<ButtonsPage> {
   DeviceStatus deviceStatus = DeviceStatus.unknown;
   String chipInfo = "";
   bool isR818 = false;
+  bool isLoading = false;
+  Timer? _timer;
+  late double _progress;
 
   @override
   void initState() {
-    Timer.periodic(const Duration(seconds: 1), (Timer timer) async {
+    EasyLoading.addStatusCallback((status) {
+      print('EasyLoading Status $status');
+      if (status == EasyLoadingStatus.dismiss) {
+        _timer?.cancel();
+      }
+    });
+    Timer.periodic(const Duration(seconds: 2), (Timer timer) async {
       // 在定时器触发时执行的操作
       var adbResult = await Process.run(adb, ["devices"]);
       if (adbResult.stdout.toString().split("\n").length == 4) {
@@ -124,10 +133,6 @@ class _ButtonsPageState extends State<ButtonsPage> {
         return;
       }
     }
-
-    EasyLoading.show(
-      status: '请拔插设备',
-    );
     if (isR818) {
       await updateR818Firmware();
     } else {
@@ -164,22 +169,56 @@ class _ButtonsPageState extends State<ButtonsPage> {
   }
 
   updateR818Firmware() async {
+    setState(() {
+      isLoading = true;
+    });
+    EasyLoading.show(
+      status: '请拔插设备',
+    );
+    _progress = 0;
+    _timer?.cancel();
+    _timer =
+        Timer.periodic(const Duration(milliseconds: 100), (Timer timer) {});
+    String pattern = r'\d+%';
+    RegExp regExp = RegExp(pattern);
     var result = await Process.start(phoenixsuit, [firmwarePath],
         workingDirectory: phoenixsuitWorkDir);
     result.stdout.listen((event) {
-      EasyLoading.show(status: "固件更新中");
-      logger.i(utf8.decode(event));
+      var text = utf8.decode(event);
+      Match? match = regExp.firstMatch(text);
+      if (match != null) {
+        String number = match.group(0)!.replaceAll("%", "");
+        logger.i(number);
+        _progress = double.parse(number) / 100;
+        EasyLoading.showProgress(_progress,
+            status: '${(_progress * 100).toStringAsFixed(0)}%');
+      }
+      logger.i(text);
     }, onDone: () {
+      setState(() {
+        isLoading = false;
+      });
       EasyLoading.showSuccess("固件更新成功");
       EasyLoading.dismiss();
+    }, onError: (e) {
+      setState(() {
+        isLoading = false;
+      });
+      EasyLoading.showError("固件更新失败");
+      EasyLoading.dismiss();
+      logger.e(e);
     });
-    // logger.e(result.exitCode);
-    // logger.e(result.stderr);
-    // logger.i(result.stdout);
   }
 
   Future<void> updateFirmware() async {
+    setState(() {
+      isLoading = true;
+    });
+    EasyLoading.show(status: "固件更新中");
     var result = await Process.run(upgradeTool, ["uf", firmwarePath]);
+    setState(() {
+      isLoading = false;
+    });
     logger.i(result.stdout);
   }
 
@@ -208,18 +247,20 @@ class _ButtonsPageState extends State<ButtonsPage> {
     }
     return "未知芯片";
   }
-  deviceStatusDesc(){
+
+  deviceStatusDesc() {
     switch (deviceStatus) {
       case DeviceStatus.adb:
         return "✅ 发现一个ADB设备";
       case DeviceStatus.notReady:
         return "❌ 设备未连接";
       case DeviceStatus.ready:
-        return "✅ 设备已连接";
+        return "✅ 设备已连接,可更新固件";
       default:
         return "❌ 设备未连接";
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
@@ -240,7 +281,8 @@ class _ButtonsPageState extends State<ButtonsPage> {
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
                                 buttonSize: ButtonSize.large,
-                                onPressed: unPackFirmwareHandle,
+                                onPressed:
+                                    isLoading ? null : unPackFirmwareHandle,
                                 child: const Text('固件'),
                               ),
                             ),
@@ -248,7 +290,8 @@ class _ButtonsPageState extends State<ButtonsPage> {
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
                                 buttonSize: ButtonSize.large,
-                                onPressed: updateFirmwareHandle,
+                                onPressed:
+                                    isLoading ? null : updateFirmwareHandle,
                                 child: const Text('升级'),
                               ),
                             ),
@@ -256,7 +299,8 @@ class _ButtonsPageState extends State<ButtonsPage> {
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
                                 buttonSize: ButtonSize.large,
-                                onPressed: changeDeviceStatusHandle,
+                                onPressed:
+                                    isLoading ? null : changeDeviceStatusHandle,
                                 child: const Text('切换'),
                               ),
                             )
