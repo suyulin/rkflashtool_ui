@@ -16,12 +16,13 @@ List of devices attached
 第一次打开软件，需要右键打开, 允许不信任的开发者。
 2. 上传固件
     * 点击固件，选择要烧录固件，显示以下信息
-     <img width="837" alt="image" src="https://github.com/suyulin/rkflashtool_ui/assets/6275411/b096b2b2-2dbe-4d24-a6aa-1efa953ddc59">
+     <img width="837" alt="image" src="https://github.com/suyulin/rkflashtool_ui/assets/1.png">
 
 3. 切换设备
    * 点击切换，设备切换到 Loader 模式，切换成功，显示一下信息
-   <img width="851" alt="image" src="https://github.com/suyulin/rkflashtool_ui/assets/6275411/7b15814e-dd29-47e8-b763-6ed0695899c2">
+   <img width="851" alt="image" src="https://github.com/suyulin/rkflashtool_ui/assets/2.png">
 4. 升级固件
    * 点击升级按钮开始升级。升级成功，设备会自动重启。
    * **R818设备必须带底壳供电,点击升级按钮,重新插拔设备的USB，设备更新成功后会自动重启 , 如长时间没有升级成功，设备完全断电后重试,**
         
+
