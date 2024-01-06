@@ -18,7 +18,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.17.6 <3.0.0"
+  sdk: '>=3.0.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   path_provider: ^2.0.15
   provider: ^6.0.5
-  macos_ui: ^1.12.2
+  macos_ui: 2.0.2
   file_picker: ^5.3.1
   path: ^1.8.2
   logger: ^1.4.0

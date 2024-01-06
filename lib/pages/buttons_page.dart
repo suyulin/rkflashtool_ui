@@ -290,8 +290,11 @@ class _ButtonsPageState extends State<ButtonsPage> {
   @override
   Widget build(BuildContext context) {
     return MacosScaffold(
+          backgroundColor: const Color.fromARGB(1, 255, 255, 255),
+
       children: [
         ContentArea(
+
           builder: (context, scrollController) {
             return Column(
               children: [
@@ -306,16 +309,16 @@ class _ButtonsPageState extends State<ButtonsPage> {
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
-                                buttonSize: ButtonSize.large,
                                 onPressed:
                                     isLoading ? null : unPackFirmwareHandle,
+                                controlSize: ControlSize.large,
                                 child: const Text('固件'),
                               ),
                             ),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
-                                buttonSize: ButtonSize.large,
+                                controlSize: ControlSize.large,
                                 onPressed:
                                     isLoading ? null : updateFirmwareHandle,
                                 child: const Text('升级'),
@@ -324,7 +327,7 @@ class _ButtonsPageState extends State<ButtonsPage> {
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: PushButton(
-                                buttonSize: ButtonSize.large,
+                                controlSize: ControlSize.large,
                                 onPressed:
                                     isLoading ? null : changeDeviceStatusHandle,
                                 child: const Text('切换'),

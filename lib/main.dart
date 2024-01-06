@@ -1,12 +1,23 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:rkflashtool_ui/pages/buttons_page.dart';
 
 import 'theme.dart';
-
+Future<void> _configureMacosWindowUtils() async {
+  const config = MacosWindowUtilsConfig();
+  await config.apply();
+}
 Future<void> main() async {
+   if (!kIsWeb) {
+    if (Platform.isMacOS) {
+      await _configureMacosWindowUtils();
+    }
+  }
   runApp(const MacosUIGalleryApp());
 }
 
@@ -22,7 +33,7 @@ class MacosUIGalleryApp extends StatelessWidget {
         return MacosApp(
           title: 'RK Flash Tool ',
           theme: MacosThemeData.light(),
-          darkTheme: MacosThemeData.dark(),
+          // darkTheme: MacosThemeData.dark(),
           themeMode: appTheme.mode,
           debugShowCheckedModeBanner: false,
           home: const WidgetGallery(),
@@ -60,6 +71,7 @@ class _WidgetGalleryState extends State<WidgetGallery> {
     return PlatformMenuBar(
       menus: [],
       child: MacosWindow(
+        backgroundColor: const Color.fromARGB(1, 255, 255, 255),
         endSidebar: Sidebar(
           startWidth: 200,
           minWidth: 200,
